@@ -43,6 +43,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something went wrong!', error: err.message });
 });
 
+// Temp test route - remove after testing
+app.get('/api/test-key', (req, res) => {
+  res.json({ 
+    geminiKey: process.env.GEMINI_API_KEY ? 'KEY EXISTS ✅' : 'KEY MISSING ❌',
+    keyValue: process.env.GEMINI_API_KEY?.substring(0, 10) + '...'
+  });
+});
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
