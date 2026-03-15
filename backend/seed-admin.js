@@ -18,7 +18,7 @@ async function seedAdmin() {
   const admin = new Student({
     registrationNumber: 'ADMIN001',
     email: 'admin@college.edu',
-    password: 'admin123',
+    password: 'admin@2005',
     firstName: 'System',
     lastName: 'Administrator',
     dateOfBirth: new Date('1990-01-01'),

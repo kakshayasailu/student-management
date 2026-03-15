@@ -34,36 +34,43 @@ export default function Layout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  const handleLogout = () => { logout(); navigate('/login'); };
 
-  const initials = user ? `${user.name?.split(' ')[0]?.[0] || ''}${user.name?.split(' ')[1]?.[0] || ''}`.toUpperCase() : 'U';
+  const initials = user
+    ? `${user.name?.split(' ')[0]?.[0] || ''}${user.name?.split(' ')[1]?.[0] || ''}`.toUpperCase()
+    : 'U';
+
   const pageTitle = PAGE_TITLES[location.pathname] || 'Student Portal';
 
   return (
     <div className="app-layout">
-      {/* Sidebar Overlay for mobile */}
       {sidebarOpen && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 99 }}
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+
+        {/* Logo Area */}
         <div className="sidebar-logo">
           <div className="logo-mark">
-            <div className="logo-icon">🎓</div>
+            {/* College Logo Image */}
+            <div className="logo-icon">
+              <img src="/college-logo.png" alt="College Logo" />
+            </div>
             <div className="logo-text">
               <div>Student<span>Hub</span></div>
-              <div style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-muted)', letterSpacing: 0.3 }}>Achievement Portal</div>
+              <div style={{ fontSize: 10, fontWeight: 400, color: 'rgba(255,255,255,0.45)', letterSpacing: 0.3 }}>
+                Achievement Portal
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Nav Items */}
         <nav className="sidebar-nav">
           <div className="nav-section-label">Main Menu</div>
           {NAV_ITEMS.map(item => (
@@ -97,6 +104,7 @@ export default function Layout() {
           )}
         </nav>
 
+        {/* User Footer */}
         <div className="sidebar-footer">
           <div className="user-card">
             <div className="user-avatar">
@@ -107,10 +115,16 @@ export default function Layout() {
             </div>
             <div className="user-info">
               <div className="user-name">{user?.name}</div>
-              <div className="user-role">{user?.role === 'admin' ? '👑 Admin' : user?.registrationNumber}</div>
+              <div className="user-role">
+                {user?.role === 'admin' ? '👑 Admin' : user?.registrationNumber}
+              </div>
             </div>
           </div>
-          <button className="btn btn-ghost btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={handleLogout}>
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ width: '100%', marginTop: 8, color: 'rgba(255,255,255,0.6)', justifyContent: 'center' }}
+            onClick={handleLogout}
+          >
             🚪 Sign Out
           </button>
         </div>
@@ -121,9 +135,8 @@ export default function Layout() {
         <header className="top-bar">
           <button
             className="btn btn-ghost btn-sm"
-            style={{ display: 'none', padding: '6px' }}
+            style={{ padding: '6px' }}
             onClick={() => setSidebarOpen(true)}
-            id="menu-btn"
           >
             ☰
           </button>
@@ -131,11 +144,14 @@ export default function Layout() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {user?.role !== 'admin' && (
-              <span className="chip">
-                📚 Sem {user?.currentSemester || '-'}
-              </span>
+              <span className="chip">📚 Sem {user?.currentSemester || '-'}</span>
             )}
-            <span className="chip" style={{ background: 'var(--accent-glow)', borderColor: 'rgba(59,130,246,0.2)', color: 'var(--accent)' }}>
+            <span className="chip" style={{
+              background: 'rgba(6,148,148,0.1)',
+              borderColor: 'rgba(6,148,148,0.25)',
+              color: '#069494',
+              fontWeight: 600
+            }}>
               {user?.program} • {user?.branch}
             </span>
           </div>
