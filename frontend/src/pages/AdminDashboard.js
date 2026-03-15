@@ -149,7 +149,7 @@ export default function AdminDashboard() {
                     <td style={{ fontSize: 12 }}>{new Date(ach.startDate).toLocaleDateString('en-IN')}</td>
                     <td>
                       {ach.certificates?.length > 0 ? (
-                        <a href={`http://localhost:5000${ach.certificates[0].path}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+                       <a href={`https://student-management-r9kr.onrender.com${ach.certificates[0].path}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
                           👁️ View
                         </a>
                       ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>None</span>}
