@@ -46,8 +46,10 @@ app.use((err, req, res, next) => {
 // Temp test route - remove after testing
 app.get('/api/test-key', (req, res) => {
   res.json({ 
-    geminiKey: process.env.GEMINI_API_KEY ? 'KEY EXISTS ✅' : 'KEY MISSING ❌',
-    keyValue: process.env.GEMINI_API_KEY?.substring(0, 10) + '...'
+    geminiKey: process.env.GEMINI_API_KEY ? 'EXISTS ✅' : 'MISSING ❌',
+    cloudinaryName: process.env.CLOUDINARY_CLOUD_NAME ? 'EXISTS ✅' : 'MISSING ❌',
+    cloudinaryKey: process.env.CLOUDINARY_API_KEY ? 'EXISTS ✅' : 'MISSING ❌',
+    cloudinarySecret: process.env.CLOUDINARY_API_SECRET ? 'EXISTS ✅' : 'MISSING ❌',
   });
 });
 // MongoDB Connection
