@@ -25,6 +25,8 @@ const callGemini = async (prompt) => {
   });
 
   const data = await response.json();
+  console.log('Gemini API Status:', response.status);
+  console.log('Gemini API Response:', JSON.stringify(data));
 
   if (!response.ok) {
     throw new Error(data.error?.message || 'Gemini API error');
