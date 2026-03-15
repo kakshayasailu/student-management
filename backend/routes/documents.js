@@ -88,5 +88,9 @@ router.delete('/:id', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
-
+console.log('Cloudinary config:', {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY ? 'EXISTS' : 'MISSING',
+  api_secret: process.env.CLOUDINARY_API_SECRET ? 'EXISTS' : 'MISSING'
+});
 module.exports = router;
