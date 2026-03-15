@@ -279,7 +279,7 @@ export default function AdminDashboard() {
                         </td>
                         <td>
                           <a
-                            href={`${BACKEND_URL}${doc.path}`}
+                            href={doc.path}
                             target="_blank"
                             rel="noreferrer"
                             className="btn btn-ghost btn-sm"

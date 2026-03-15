@@ -1,12 +1,33 @@
 const express = require('express');
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const Document = require('../models/Document');
 const { auth } = require('../middleware/auth');
-const { documentUpload } = require('../middleware/upload');
 
 const router = express.Router();
 
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Cloudinary Storage
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'student-documents',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
+    resource_type: 'auto'
+  }
+});
+
+const upload = multer({ storage });
+
 // Upload document
-router.post('/upload', auth, documentUpload.single('document'), async (req, res) => {
+router.post('/upload', auth, upload.single('document'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
@@ -23,7 +44,7 @@ router.post('/upload', auth, documentUpload.single('document'), async (req, res)
       issuingAuthority: req.body.issuingAuthority,
       filename: req.file.filename,
       originalName: req.file.originalname,
-      path: `/uploads/documents/${req.file.filename}`,
+      path: req.file.path,           // Cloudinary URL
       mimeType: req.file.mimetype,
       size: req.file.size
     });
@@ -54,7 +75,12 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const doc = await Document.findOne({ _id: req.params.id, student: req.user._id });
     if (!doc) return res.status(404).json({ message: 'Document not found or unauthorized' });
-    
+
+    // Delete from Cloudinary
+    if (doc.filename) {
+      await cloudinary.uploader.destroy(`student-documents/${doc.filename}`, { resource_type: 'auto' });
+    }
+
     doc.isActive = false;
     await doc.save();
     res.json({ message: 'Document removed' });
