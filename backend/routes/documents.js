@@ -17,18 +17,42 @@ cloudinary.config({
 // Cloudinary Storage
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: 'student-documents',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
-    resource_type: 'auto'
+  params: async (req, file) => {
+    return {
+      folder: 'student-documents',
+      resource_type: 'auto',
+      public_id: `${Date.now()}-${file.originalname.split('.')[0]}`
+    };
   }
 });
 
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPG, PNG, PDF files are allowed!'));
+    }
+  }
+});
 
 // Upload document
-router.post('/upload', auth, upload.single('document'), async (req, res) => {
+router.post('/upload', auth, (req, res, next) => {
+  upload.single('document')(req, res, (err) => {
+    if (err) {
+      console.log('Multer/Cloudinary upload error:', err.message);
+      return res.status(400).json({ message: err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
+    console.log('File received:', req.file);
+    console.log('Body received:', req.body);
+
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
     const doc = new Document({
@@ -44,14 +68,16 @@ router.post('/upload', auth, upload.single('document'), async (req, res) => {
       issuingAuthority: req.body.issuingAuthority,
       filename: req.file.filename,
       originalName: req.file.originalname,
-      path: req.file.path,           // Cloudinary URL
+      path: req.file.path,
       mimeType: req.file.mimetype,
       size: req.file.size
     });
 
     await doc.save();
+    console.log('Document saved successfully:', doc._id);
     res.status(201).json({ message: 'Document uploaded successfully', document: doc });
   } catch (error) {
+    console.log('Document save error:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -76,7 +102,6 @@ router.delete('/:id', auth, async (req, res) => {
     const doc = await Document.findOne({ _id: req.params.id, student: req.user._id });
     if (!doc) return res.status(404).json({ message: 'Document not found or unauthorized' });
 
-    // Delete from Cloudinary
     if (doc.filename) {
       await cloudinary.uploader.destroy(`student-documents/${doc.filename}`, { resource_type: 'auto' });
     }
@@ -88,9 +113,5 @@ router.delete('/:id', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
-console.log('Cloudinary config:', {
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY ? 'EXISTS' : 'MISSING',
-  api_secret: process.env.CLOUDINARY_API_SECRET ? 'EXISTS' : 'MISSING'
-});
+
 module.exports = router;
