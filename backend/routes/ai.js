@@ -5,22 +5,32 @@ const Student = require('../models/Student');
 
 const router = express.Router();
 
-const callClaude = async (prompt) => {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+// Google Gemini API call function
+const callGemini = async (prompt) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }]
+      contents: [
+        {
+          parts: [{ text: prompt }]
+        }
+      ]
     })
   });
+
   const data = await response.json();
-  return data.content[0].text;
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || 'Gemini API error');
+  }
+
+  return data.candidates[0].content.parts[0].text;
 };
 
 // Generate AI summary of achievements
@@ -42,11 +52,11 @@ Description: ${achievement.description || 'N/A'}
 
 Write a concise, professional summary suitable for an academic portfolio or resume. Highlight the achievement's significance.`;
 
-    const summary = await callClaude(prompt);
-    
+    const summary = await callGemini(prompt);
+
     achievement.aiSummary = summary;
     await achievement.save();
-    
+
     res.json({ summary });
   } catch (error) {
     res.status(500).json({ message: 'AI service error', error: error.message });
@@ -87,7 +97,7 @@ Internships: ${achievements.filter(a => a.category === 'INTERNSHIP').length}
 
 Provide actionable, encouraging feedback suitable for an academic counselor's report.`;
 
-    const analysis = await callClaude(prompt);
+    const analysis = await callGemini(prompt);
     res.json({ analysis });
   } catch (error) {
     res.status(500).json({ message: 'AI service error', error: error.message });
@@ -119,7 +129,7 @@ Generate:
 
 Format as clean, professional resume content.`;
 
-    const resumeContent = await callClaude(prompt);
+    const resumeContent = await callGemini(prompt);
     res.json({ resumeContent });
   } catch (error) {
     res.status(500).json({ message: 'AI service error', error: error.message });
@@ -150,7 +160,7 @@ For each recommendation provide:
 
 Focus on practical, achievable opportunities for an Indian engineering student.`;
 
-    const recommendations = await callClaude(prompt);
+    const recommendations = await callGemini(prompt);
     res.json({ recommendations });
   } catch (error) {
     res.status(500).json({ message: 'AI service error', error: error.message });
@@ -200,7 +210,7 @@ ${Object.entries(stats.byLevel).map(([k, v]) => `- ${k}: ${v}`).join('\n')}
 
 Generate a formal accreditation report paragraph (for NAAC/NBA documentation) highlighting student achievement metrics, with appropriate academic language. Include key performance indicators and how they align with accreditation criteria 5.3 (Student Participation and Activities).`;
 
-    const report = await callClaude(prompt);
+    const report = await callGemini(prompt);
     res.json({ report, stats });
   } catch (error) {
     res.status(500).json({ message: 'AI service error', error: error.message });
