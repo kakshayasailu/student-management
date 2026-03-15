@@ -1,20 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../utils/api';
+import API from '../utils/api';
 import toast from 'react-hot-toast';
+
+const BACKEND_URL = 'https://student-management-r9kr.onrender.com';
 
 export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState(null);
   const [pending, setPending] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(null);
+  const [verifyingDoc, setVerifyingDoc] = useState(null);
+  const [activeTab, setActiveTab] = useState('achievements');
+  const [docFilter, setDocFilter] = useState('ALL');
 
   useEffect(() => {
     Promise.all([
       adminAPI.getAnalytics(),
-      adminAPI.getPendingAchievements()
-    ]).then(([aRes, pRes]) => {
+      adminAPI.getPendingAchievements(),
+      API.get('/admin/documents')
+    ]).then(([aRes, pRes, dRes]) => {
       setAnalytics(aRes.data);
       setPending(pRes.data);
+      setDocuments(dRes.data);
     }).catch(() => toast.error('Failed to load admin data'))
       .finally(() => setLoading(false));
   }, []);
@@ -30,16 +39,30 @@ export default function AdminDashboard() {
     finally { setVerifying(null); }
   };
 
+  const handleVerifyDoc = async (id) => {
+    setVerifyingDoc(id);
+    try {
+      await adminAPI.verifyDocument(id);
+      toast.success('Document verified!');
+      setDocuments(prev => prev.map(d => d._id === id ? { ...d, isVerified: true } : d));
+    } catch { toast.error('Document verification failed'); }
+    finally { setVerifyingDoc(null); }
+  };
+
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><div className="loader" /></div>;
 
   const LEVEL_BADGE = { COLLEGE: 'badge-gray', DISTRICT: 'badge-blue', STATE: 'badge-cyan', NATIONAL: 'badge-amber', INTERNATIONAL: 'badge-purple' };
+
+  const filteredDocs = docFilter === 'ALL' ? documents : documents.filter(d =>
+    docFilter === 'UNVERIFIED' ? !d.isVerified : d.isVerified
+  );
 
   return (
     <div>
       <div className="page-header">
         <div>
           <h1 className="page-title">Admin Dashboard</h1>
-          <p className="page-subtitle">System overview and achievement verification</p>
+          <p className="page-subtitle">System overview and verification</p>
         </div>
       </div>
 
@@ -67,10 +90,10 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon purple">📊</div>
+          <div className="stat-icon purple">📄</div>
           <div>
-            <div className="stat-label">Categories</div>
-            <div className="stat-value purple">{analytics?.achievementsByCategory?.length || 0}</div>
+            <div className="stat-label">Total Documents</div>
+            <div className="stat-value purple">{documents.length || 0}</div>
           </div>
         </div>
       </div>
@@ -99,84 +122,191 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Pending Achievements */}
+      {/* Tabs */}
       <div className="card">
-        <div className="card-header">
-          <div className="card-title">⏳ Pending Verifications ({pending.length})</div>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+          <button
+            className={`btn ${activeTab === 'achievements' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setActiveTab('achievements')}
+          >
+            ⏳ Pending Achievements ({pending.length})
+          </button>
+          <button
+            className={`btn ${activeTab === 'documents' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setActiveTab('documents')}
+          >
+            📄 Student Documents ({documents.length})
+          </button>
         </div>
 
-        {pending.length === 0 ? (
-          <div className="empty-state" style={{ padding: 40 }}>
-            <div className="empty-icon">✅</div>
-            <h3>All caught up!</h3>
-            <p>No pending achievements to verify</p>
-          </div>
-        ) : (
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Achievement</th>
-                  <th>Category</th>
-                  <th>Level</th>
-                  <th>Date</th>
-                  <th>Certificate</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pending.map(ach => (
-                  <tr key={ach._id}>
-                    <td>
-                      <div style={{ fontWeight: 500, fontSize: 13 }}>
-                        {ach.student?.firstName} {ach.student?.lastName}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                        {ach.student?.registrationNumber}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>
-                        {ach.title}
-                      </div>
-                      {ach.organizingBody && (
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{ach.organizingBody}</div>
-                      )}
-                    </td>
-                    <td><span className="badge badge-blue" style={{ fontSize: 10 }}>{ach.category?.replace(/_/g, ' ')}</span></td>
-                    <td><span className={`badge ${LEVEL_BADGE[ach.level]}`}>{ach.level}</span></td>
-                    <td style={{ fontSize: 12 }}>{new Date(ach.startDate).toLocaleDateString('en-IN')}</td>
-                    <td>
-                      {ach.certificates?.length > 0 ? (
-                       <a href={`https://student-management-r9kr.onrender.com${ach.certificates[0].path}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
-                          👁️ View
-                        </a>
-                      ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>None</span>}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          className="btn btn-success btn-sm"
-                          onClick={() => handleVerify(ach._id, 'APPROVED')}
-                          disabled={verifying === ach._id}
-                        >
-                          ✅
-                        </button>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleVerify(ach._id, 'REJECTED')}
-                          disabled={verifying === ach._id}
-                        >
-                          ❌
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {/* Pending Achievements Tab */}
+        {activeTab === 'achievements' && (
+          <>
+            {pending.length === 0 ? (
+              <div className="empty-state" style={{ padding: 40 }}>
+                <div className="empty-icon">✅</div>
+                <h3>All caught up!</h3>
+                <p>No pending achievements to verify</p>
+              </div>
+            ) : (
+              <div className="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th>Achievement</th>
+                      <th>Category</th>
+                      <th>Level</th>
+                      <th>Date</th>
+                      <th>Certificate</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pending.map(ach => (
+                      <tr key={ach._id}>
+                        <td>
+                          <div style={{ fontWeight: 500, fontSize: 13 }}>
+                            {ach.student?.firstName} {ach.student?.lastName}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                            {ach.student?.registrationNumber}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>
+                            {ach.title}
+                          </div>
+                          {ach.organizingBody && (
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{ach.organizingBody}</div>
+                          )}
+                        </td>
+                        <td><span className="badge badge-blue" style={{ fontSize: 10 }}>{ach.category?.replace(/_/g, ' ')}</span></td>
+                        <td><span className={`badge ${LEVEL_BADGE[ach.level]}`}>{ach.level}</span></td>
+                        <td style={{ fontSize: 12 }}>{new Date(ach.startDate).toLocaleDateString('en-IN')}</td>
+                        <td>
+                          {ach.certificates?.length > 0 ? (
+                            <a href={`${BACKEND_URL}${ach.certificates[0].path}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+                              👁️ View
+                            </a>
+                          ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>None</span>}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              className="btn btn-success btn-sm"
+                              onClick={() => handleVerify(ach._id, 'APPROVED')}
+                              disabled={verifying === ach._id}
+                            >✅</button>
+                            <button
+                              className="btn btn-danger btn-sm"
+                              onClick={() => handleVerify(ach._id, 'REJECTED')}
+                              disabled={verifying === ach._id}
+                            >❌</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Student Documents Tab */}
+        {activeTab === 'documents' && (
+          <>
+            {/* Filter */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {['ALL', 'UNVERIFIED', 'VERIFIED'].map(f => (
+                <button
+                  key={f}
+                  className={`btn btn-sm ${docFilter === f ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setDocFilter(f)}
+                >
+                  {f === 'ALL' ? '📋 All' : f === 'UNVERIFIED' ? '⏳ Pending' : '✅ Verified'}
+                </button>
+              ))}
+            </div>
+
+            {filteredDocs.length === 0 ? (
+              <div className="empty-state" style={{ padding: 40 }}>
+                <div className="empty-icon">📄</div>
+                <h3>No documents found</h3>
+                <p>No student documents uploaded yet</p>
+              </div>
+            ) : (
+              <div className="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th>Document Type</th>
+                      <th>File Name</th>
+                      <th>Uploaded On</th>
+                      <th>Status</th>
+                      <th>View</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredDocs.map(doc => (
+                      <tr key={doc._id}>
+                        <td>
+                          <div style={{ fontWeight: 500, fontSize: 13 }}>
+                            {doc.student?.firstName} {doc.student?.lastName}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                            {doc.registrationNumber}
+                          </div>
+                        </td>
+                        <td>
+                          <span className="badge badge-blue" style={{ fontSize: 10 }}>
+                            {doc.documentType?.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: 12 }}>{doc.originalName}</td>
+                        <td style={{ fontSize: 12 }}>
+                          {new Date(doc.createdAt).toLocaleDateString('en-IN')}
+                        </td>
+                        <td>
+                          {doc.isVerified ? (
+                            <span className="badge badge-green">✅ Verified</span>
+                          ) : (
+                            <span className="badge badge-amber">⏳ Pending</span>
+                          )}
+                        </td>
+                        <td>
+                          <a
+                            href={`${BACKEND_URL}${doc.path}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-ghost btn-sm"
+                          >
+                            👁️ View
+                          </a>
+                        </td>
+                        <td>
+                          {!doc.isVerified ? (
+                            <button
+                              className="btn btn-success btn-sm"
+                              onClick={() => handleVerifyDoc(doc._id)}
+                              disabled={verifyingDoc === doc._id}
+                            >
+                              {verifyingDoc === doc._id ? '...' : '✅ Verify'}
+                            </button>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Done</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
 

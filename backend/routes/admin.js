@@ -5,7 +5,17 @@ const Document = require('../models/Document');
 const { adminAuth } = require('../middleware/auth');
 
 const router = express.Router();
-
+// Get all student documents
+router.get('/documents', adminAuth, async (req, res) => {
+  try {
+    const documents = await Document.find({ isActive: true })
+      .populate('student', 'firstName lastName')
+      .sort({ createdAt: -1 });
+    res.json(documents);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
 // Search student by registration number
 router.get('/student/:regNo', adminAuth, async (req, res) => {
   try {
